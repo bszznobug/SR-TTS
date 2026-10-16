@@ -1,0 +1,88 @@
+# ===================== 路径配置 =====================
+# 单文件测试集路径（test_h5_dir 为空时使用，也兼容目录路径）
+test_h5_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\training_data_test.h5"    # 测试单个测试集文件
+# 批量测试集目录（优先使用，扫描该目录下所有 .h5/.hdf5 文件）
+test_h5_dir: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\test_by_label"            # 批量测试路径
+raw_h5_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\training_data.h5"         # 原始数据集路径
+train_h5_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\training_data_train.h5" # 训练集路径
+result_save_dir: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\output\\results_temp"                       # 训练测试结果保存路径
+model_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\output\\results_temp\\best_model.pth"            # 平面模型保存路径
+output_dir: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\output\\results_temp\\test_results"              # 测试结果路径
+
+# ===================== 数据集分割配置（核心优化：合理比例） =====================
+train_ratio: 0.5    # 训练集80%，保证足够拟合数据
+val_ratio: 0.1     # 验证集15%，平衡统计稳定性和数据利用率
+test_ratio: 0.4    # 测试集5%
+batch_size: 128    # 适度减小批次，提升梯度更新频率，利于收敛
+num_workers: 0      # 代码自动适配，此处仅为占位
+full_load: False               # 优先全内存加载
+fallback_batch_size: 128      # 内存不足时大幅降批次，避免压力
+fallback_num_workers: 0       # 回退时减少线程，降低IO占用
+
+# ===================== 模型配置 =====================
+joint_mode: False    # false 为独立分类模式
+num_rows: 51        # 超分辨行数
+num_cols: 51        # 超分辨列数
+num_channels: 32
+seq_len: 100
+
+# ===================== 训练配置（核心优化：降低基础LR，匹配调度） =====================
+num_epochs: 200      # 合理总轮数，匹配OneCycleLR和早停
+learning_rate: 0.0001  # 降低基础学习率，避免初始值过高
+device: "cuda"      # 代码自动检测，此处仅为占位
+seed: 42            # 随机种子，代码已实现固定
+target_fs: 100      # 降采样后频率
+mode: "classification"  # 分类任务
+
+# ========== 新增：分类任务专属配置（准确率提升核心） ==========
+label_smoothing: 0.1        # 标签平滑系数，建议0.1-0.2
+lr_warmup_epochs: 5         # 学习率预热轮数，建议3-5
+max_grad_norm: 1.0          # 梯度裁剪最大范数
+class_weight: True          # 开启类别权重，解决样本不均衡
+
+# ===================== 训练配置（高性能，核心优化：平缓LR调度） =====================
+weight_decay: 0.0001  # 降低权重衰减，缓解欠拟合
+betas_1: 0.9          # AdamW默认值，稳定
+betas_2: 0.999        # AdamW默认值，稳定
+patience: 20          # 增大早停耐心，给模型足够收敛时间
+
+# ===================== 硬件优化配置（核心优化：适配新批次） =====================
+gpu_id: 0                     # 使用的GPU编号
+enable_benchmark: True        # 启用cudnn benchmark，提升计算速度
+enable_tf32: True             # 启用TF32加速，不损失精度
+warmup_batches: 10            # 增加预热批次，提升GPU稳定性
+dummy_input_shape: [128, 32, 100] # 与新batch_size=128一致
+
+# ===================== 测试配置 =====================
+max_confusion_classes: 11  # 混淆矩阵最大显示类别数
+
+
+# ========== 迁移学习微调配置 ==========
+finetune_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\output\\results_temp\\best_incremental_model.pth"   # 增量模型保存
+pretrain_weights_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\output\\results_temp\\best_model.pth"  # 平面预训练权重路径
+curve_h5_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\training_data_curve.h5"  # 曲面微调数据集
+freeze_backbone_epochs: 10  # 前10轮冻结主干，只训分类头
+backbone_lr_scale: 0.1      # 解冻后主干学习率为分类头1/10，防止破坏平面特征
+
+# 选择解冻哪些层 (warmup阶段结束后生效，用于对比迁移学习效果)
+# head_only | head+cnn | head+transformer | head+cnn+transformer | all
+unfreeze_layers: "head+cnn+transformer"
+curve_train_ratio: 0.7
+curve_val_ratio: 0.3
+
+# ========== 增量学习专属配置 (finetune_mode=incremental) ==========
+# EWC (弹性权重巩固) — 保护平面任务的重要权重不被曲面训练覆盖
+use_ewc: true                # 是否启用EWC正则化
+ewc_lambda: 500.0            # EWC惩罚强度 (推荐100-2000，越大越保守)
+ewc_fisher_samples: 500      # 计算Fisher矩阵使用的平面样本数
+
+# 知识蒸馏 (KD) — 让学生模型输出分布接近教师模型，保留决策边界
+use_kd: true                 # 是否启用知识蒸馏
+kd_temperature: 4.0          # 蒸馏温度 (推荐2-8，越大输出越平滑)
+kd_weight: 0.5               # 蒸馏损失权重 (推荐0.1-1.0)
+
+# 记忆重放 (Memory Replay) — 训练时混合平面样本复习旧知识
+use_replay: true             # 是否启用记忆重放
+replay_buffer_size: 1000     # 重放缓冲区中的平面样本数量
+replay_weight: 0.3           # 重放蒸馏损失权重 (推荐0.1-0.5)
+

@@ -1,0 +1,32 @@
+# 路径配置
+paths:
+  tdms_input_folder: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\raw_data\\origin_TDMS"
+  tdms_output_root: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\segmented_output"
+  labels_root_dir: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\raw_data\\label"
+  h5_output_path: "D:\\desktop\\Super_figure_PythonProject\\SR-TTS_code\\data\\processed_data\\training_data.h5"
+
+# TDMS 处理配置
+tdms_process:
+  channel_count: 32       # tdms的输入通道数
+  channel_prefix: "Pos"
+  do_filter: True
+  filter_type: "low"      # 使用低通滤波
+  fs: 1000                # 数据原始采样率
+  cutoff: 30
+  th_ratio: 0.1           # 通过能量阈值来筛选有效通道
+  min_peak_distance: 0.8  # 通过峰的距离进行切割信号
+  window_size: 1.0
+  peak_start_idx: 3       # 选取从第几个峰开始保存信号
+  peak_end_idx: 48
+
+# 数据合并配置
+data_merger:
+  batch_size: null        # null 表示自动计算
+  max_workers: 6
+  checkpoint_interval: 5
+  compression: "gzip"
+  compression_opts: 6
+  original_fs: 1000       # 数据初始频率
+  target_fs: 100           # 降采样后频率
+  step_um: 1000            # 坐标四舍五入步长（微米）
+  mode: "classification"  # "classification" 和"regression"表示从标签文件获得标签，且可选执行回归还是分类任务 "origin"表示从文件名获得标签
